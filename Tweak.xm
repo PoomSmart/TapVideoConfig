@@ -137,7 +137,7 @@ NSInteger fps = 0;
 
 %new
 - (void)changeVideoConfigurationMode:(UITapGestureRecognizer *)gesture {
-     NSInteger cameraMode, cameraDevice;
+    NSInteger cameraMode, cameraDevice;
     if ([self respondsToSelector:@selector(_currentGraphConfiguration)]) {
         cameraMode = self._currentGraphConfiguration.mode;
         cameraDevice = self._currentGraphConfiguration.device == 0 ? 0 : devices[self._currentGraphConfiguration.device - 1];
@@ -175,7 +175,10 @@ NSInteger fps = 0;
             [self _writeUserPreferences];
             CFPreferencesSetAppValue(cameraMode == 2 ? CFSTR("CAMUserPreferenceSlomoConfiguration") : CFSTR("CAMUserPreferenceVideoConfiguration"), modes[mode], CFSTR("com.apple.camera"));
             CFPreferencesAppSynchronize(CFSTR("com.apple.camera"));
-            [self _readUserPreferencesAndHandleChanges];
+            if (@available(iOS 13.0, *))
+                [self readUserPreferencesAndHandleChangesWithOverrides:0];
+            else
+                [self _readUserPreferencesAndHandleChanges];
         }];
         [alert addAction:action];
     }
