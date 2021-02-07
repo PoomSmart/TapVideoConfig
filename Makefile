@@ -1,5 +1,5 @@
-TARGET = iphone:11.2:9.0
-PACKAGE_VERSION = 0.0.4
+TARGET = iphone:latest:9.0
+PACKAGE_VERSION = 0.0.5
 
 include $(THEOS)/makefiles/common.mk
 
