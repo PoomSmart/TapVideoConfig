@@ -10,3 +10,4 @@ Description: Change video configuration directly in Camera app.
 Maintainer: PoomSmart
 Author: PoomSmart
 Section: Tweaks
+Tag: compatible::ios9, compatible::ios10, compatible::ios11, compatible::ios12, compatible::ios13, compatible::ios14

@@ -103,6 +103,14 @@ NSInteger fps = 0;
 
 %end
 
+%hook CAMCaptureCapabilities
+
+- (bool)interactiveVideoFormatControlAlwaysEnabled {
+    return true;
+}
+
+%end
+
 %hook CAMViewfinderViewController
 
 - (BOOL)_shouldHideFramerateIndicatorForGraphConfiguration:(CAMCaptureGraphConfiguration *)configuration {
@@ -126,7 +134,7 @@ NSInteger fps = 0;
 
 - (void)_createVideoConfigurationStatusIndicatorIfNecessary {
     %orig;
-    UIView /*CAMVideoConfigurationStatusIndicator*/ *view = [self valueForKey:@"__videoConfigurationStatusIndicator"];
+    UIControl /*CAMVideoConfigurationStatusIndicator*/ *view = [self valueForKey:@"__videoConfigurationStatusIndicator"];
     if (view) {
         view.userInteractionEnabled = YES;
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(changeVideoConfigurationMode:)];
