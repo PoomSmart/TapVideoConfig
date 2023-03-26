@@ -1,4 +1,5 @@
-TARGET = iphone:clang:latest:14.0
+TARGET = iphone:clang:latest:9.0
+GO_EASY_ON_ME=1
 
 include $(THEOS)/makefiles/common.mk
 
