@@ -1,7 +1,14 @@
 #define UNRESTRICTED_AVAILABILITY
-#import "../PS.h"
+#import <CoreFoundation/CoreFoundation.h>
+#import <PSHeader/CameraApp/CAMCaptureCapabilities.h>
+#import <PSHeader/CameraApp/CAMUserPreferences.h>
+#import <PSHeader/CameraApp/CAMViewfinderViewController.h>
 #import <version.h>
 #import <UIKit/UIApplication+Private.h>
+
+@interface CAMViewfinderViewController (TapVideoConfig)
+- (void)changeVideoConfigurationMode:(UITapGestureRecognizer *)gesture;
+@end
 
 typedef NS_ENUM(NSInteger, VideoConfigurationMode) {
     VideoConfigurationModeDefault = 0,
@@ -143,7 +150,15 @@ NSInteger fps = 0;
     }
 }
 
-%new
+- (void)videoConfigurationStatusIndicatorDidTapFramerate:(id)arg1 {
+    [self changeVideoConfigurationMode:nil];
+}
+
+- (void)videoConfigurationStatusIndicatorDidTapResolution:(id)arg1 {
+    [self changeVideoConfigurationMode:nil];
+}
+
+%new(v@:@)
 - (void)changeVideoConfigurationMode:(UITapGestureRecognizer *)gesture {
     NSInteger cameraMode, cameraDevice;
     if ([self respondsToSelector:@selector(_currentGraphConfiguration)]) {
@@ -181,7 +196,7 @@ NSInteger fps = 0;
     for (NSString *mode in sortedArray) {
         UIAlertAction *action = [UIAlertAction actionWithTitle:mode style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             [self _writeUserPreferences];
-            CFPreferencesSetAppValue(cameraMode == 2 ? CFSTR("CAMUserPreferenceSlomoConfiguration") : CFSTR("CAMUserPreferenceVideoConfiguration"), modes[mode], CFSTR("com.apple.camera"));
+            CFPreferencesSetAppValue(cameraMode == 2 ? CFSTR("CAMUserPreferenceSlomoConfiguration") : CFSTR("CAMUserPreferenceVideoConfiguration"), (CFNumberRef)modes[mode], CFSTR("com.apple.camera"));
             CFPreferencesAppSynchronize(CFSTR("com.apple.camera"));
             if (@available(iOS 13.0, *))
                 [self readUserPreferencesAndHandleChangesWithOverrides:0];
