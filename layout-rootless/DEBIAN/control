@@ -1,9 +1,0 @@
-Package: com.ps.tapvideoconfig-rootless
-Name: TapVideoConfig (Rootless)
-Depends: mobilesubstrate, firmware (>= 14.0)
-Version: 1.0.0
-Architecture: iphoneos-arm
-Description: Change video configuration directly in Camera app.
-Maintainer: PoomSmart
-Author: PoomSmart
-Section: Tweaks
