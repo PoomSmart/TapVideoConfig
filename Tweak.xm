@@ -81,7 +81,7 @@ NSInteger fps = 0;
 }
 
 - (NSInteger)_framesPerSecond {
-    return fps ? fps : %orig;
+    return fps ?: %orig;
 }
 
 - (void)_updateAppearance {
