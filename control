@@ -1,12 +1,12 @@
 Package: com.ps.tapvideoconfig
 Name: TapVideoConfig
-Depends: mobilesubstrate, firmware (>= 9.0)
+Depends: mobilesubstrate, firmware (>= 14.0)
 Conflicts: com.spicat.tapvideoconfig
 Replaces: com.spicat.tapvideoconfig
 Provides: com.spicat.tapvideoconfig
 Version: 1.0.0
 Architecture: iphoneos-arm
-Description: Change video configuration directly in Camera app.
+Description: Change video configuration directly in iOS Camera app.
 Maintainer: PoomSmart
 Author: PoomSmart
 Section: Tweaks
