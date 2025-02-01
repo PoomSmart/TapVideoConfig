@@ -1,6 +1,6 @@
 Package: com.ps.tapvideoconfig
 Name: TapVideoConfig
-Depends: mobilesubstrate, firmware (>= 14.0)
+Depends: mobilesubstrate, firmware (>= 13.0)
 Conflicts: com.spicat.tapvideoconfig
 Replaces: com.spicat.tapvideoconfig
 Provides: com.spicat.tapvideoconfig

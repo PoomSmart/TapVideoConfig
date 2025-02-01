@@ -69,6 +69,26 @@ NSString *title(VideoConfigurationMode mode) {
     return @"Unknown";
 }
 
+NSInteger fps = 0;
+
+%hook CAMFramerateIndicatorView
+
+- (NSInteger)_framesPerSecond {
+    return fps ?: %orig;
+}
+
+- (void)setStyle:(NSInteger)style {
+    if (style == 0) {
+        fps = 30;
+        %orig(1);
+        [self setValue:@(style) forKey:@"_style"];
+        fps = 0;
+    } else
+        %orig(style);
+}
+
+%end
+
 %hook CAMCaptureCapabilities
 
 - (bool)interactiveVideoFormatControlAlwaysEnabled {
@@ -78,6 +98,24 @@ NSString *title(VideoConfigurationMode mode) {
 %end
 
 %hook CAMViewfinderViewController
+
+- (BOOL)_shouldHideFramerateIndicatorForGraphConfiguration:(CAMCaptureGraphConfiguration *)configuration {
+    return [self._captureController isCapturingVideo] || [self._topBar shouldHideFramerateIndicatorForGraphConfiguration:configuration] ? %orig : (configuration.mode == 1 || configuration.mode == 2 ? NO : %orig);
+}
+
+- (BOOL)_shouldHideFramerateIndicatorForMode:(NSInteger)mode device:(NSInteger)device {
+    return [UIApplication shouldMakeUIForDefaultPNG];
+}
+
+- (void)_createFramerateIndicatorViewIfNecessary {
+    %orig;
+    CAMFramerateIndicatorView *view = [self valueForKey:@"_framerateIndicatorView"];
+    if (!view) return;
+    view.userInteractionEnabled = YES;
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(changeVideoConfigurationMode:)];
+    tap.numberOfTouchesRequired = 1;
+    [view addGestureRecognizer:tap];
+}
 
 - (void)_createVideoConfigurationStatusIndicatorIfNecessary {
     %orig;
