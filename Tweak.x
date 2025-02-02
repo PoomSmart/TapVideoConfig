@@ -1,13 +1,27 @@
 #define UNRESTRICTED_AVAILABILITY
+#import <CameraUI/UIFont+CameraUIAdditions.h>
 #import <CoreFoundation/CoreFoundation.h>
+#import <CoreText/CoreText.h>
 #import <PSHeader/CameraApp/CAMCaptureCapabilities.h>
+#import <PSHeader/CameraApp/CAMControlStatusIndicator.h>
 #import <PSHeader/CameraApp/CAMUserPreferences.h>
 #import <PSHeader/CameraApp/CAMViewfinderViewController.h>
-#import <version.h>
 #import <UIKit/UIApplication+Private.h>
+#import <version.h>
+
+extern NSString *CAMLocalizedFrameworkString(NSString *);
+
+@interface UIFont (CameraUIAdditions)
++ (CGFloat)cui_cameraKerningForFont:(UIFont *)font;
+@end
 
 @interface CAMViewfinderViewController (TapVideoConfig)
 - (void)changeVideoConfigurationMode:(UITapGestureRecognizer *)gesture;
+@end
+
+@interface CAMFramerateIndicatorView (Addition)
+@property (nonatomic, assign) NSInteger resolution;
+@property (nonatomic, assign) NSInteger framerate;
 @end
 
 typedef NS_ENUM(NSInteger, VideoConfigurationMode) {
@@ -30,6 +44,7 @@ typedef NS_ENUM(NSInteger, VideoConfigurationMode) {
 };
 
 NSInteger devices[] = { 1, 0, 0, 0, 1, 1 };
+NSInteger toFPS[] = { 24, 30, 60, 120, 240 };
 
 NSString *title(VideoConfigurationMode mode) {
     switch (mode) {
@@ -69,22 +84,65 @@ NSString *title(VideoConfigurationMode mode) {
     return @"Unknown";
 }
 
-NSInteger fps = 0;
-
 %hook CAMFramerateIndicatorView
 
-- (NSInteger)_framesPerSecond {
-    return fps ?: %orig;
-}
+%property (nonatomic, assign) NSInteger resolution;
+%property (nonatomic, assign) NSInteger framerate;
 
 - (void)setStyle:(NSInteger)style {
-    if (style == 0) {
-        fps = 30;
-        %orig(1);
-        [self setValue:@(style) forKey:@"_style"];
-        fps = 0;
-    } else
-        %orig(style);
+    [self setValue:@(style) forKey:@"_style"];
+    [self _updateForAppearanceChange];
+}
+
+- (void)_updateAppearance {
+    CGFloat fontSize = 0.0;
+    NSInteger layoutStyle = self.layoutStyle;
+
+    if (layoutStyle <= 4 && (23 >> layoutStyle)) {
+        [self._borderImageView setHidden:0x1D >> layoutStyle];
+        fontSize = 14.0;
+    }
+
+    NSString *resolutionLabelFormat;
+    switch (self.resolution) {
+        case 1:
+            resolutionLabelFormat = @"FRAMERATE_INDICATOR_720p30";
+            break;
+        case 2:
+            resolutionLabelFormat = @"FRAMERATE_INDICATOR_HD";
+            break;
+        case 3:
+            resolutionLabelFormat = @"FRAMERATE_INDICATOR_4K";
+            break;
+        default:
+            resolutionLabelFormat = @"";
+            break;
+    }
+
+    NSNumberFormatter *formatter = [%c(CAMControlStatusIndicator) integerFormatter];
+    NSString *resolutionLabel = CAMLocalizedFrameworkString(resolutionLabelFormat);
+    NSString *framerateLabel = [formatter stringFromNumber:@(toFPS[self.framerate - 1])];
+    NSString *label = [NSString stringWithFormat:@"%@ · %@", resolutionLabel, framerateLabel];
+
+    NSDictionary *attributes = @{
+        @"CTFeatureTypeIdentifier": @(35),
+        @"CTFeatureSelectorIdentifier": @(2)
+    };
+    UIFont *font = [UIFont cui_cameraFontOfSize:fontSize];
+    UIFontDescriptor *fontDescriptor = [font fontDescriptor];
+    NSDictionary *fontAttributes = @{
+        (id)kCTFontFeatureSettingsAttribute: attributes
+    };
+    UIFontDescriptor *newFontDescriptor = [fontDescriptor fontDescriptorByAddingAttributes:fontAttributes];
+    UIFont *newFont = [UIFont fontWithDescriptor:newFontDescriptor size:fontSize];
+
+    NSDictionary *attributedStringAttributes = @{
+        (id)kCTFontAttributeName: newFont,
+        (id)kCTKernAttributeName: @([UIFont cui_cameraKerningForFont:newFont])
+    };
+
+    NSAttributedString *finalLabel = [[NSAttributedString alloc] initWithString:label attributes:attributedStringAttributes];
+    self._label.attributedText = finalLabel;
 }
 
 %end
@@ -115,6 +173,15 @@ NSInteger fps = 0;
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(changeVideoConfigurationMode:)];
     tap.numberOfTouchesRequired = 1;
     [view addGestureRecognizer:tap];
+}
+
+- (void)_updateFramerateIndicatorTextForGraphConfiguration:(CAMCaptureGraphConfiguration *)configuration {
+    CAMFramerateIndicatorView *view = [self valueForKey:@"_framerateIndicatorView"];
+    if (view) {
+        view.resolution = [self _videoConfigurationResolutionForGraphConfiguration:configuration];
+        view.framerate = [self _videoConfigurationFramerateForGraphConfiguration:configuration];
+    }
+    %orig;
 }
 
 - (void)_createVideoConfigurationStatusIndicatorIfNecessary {
