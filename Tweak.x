@@ -103,26 +103,45 @@ NSString *title(VideoConfigurationMode mode) {
         fontSize = 14.0;
     }
 
-    NSString *resolutionLabelFormat;
-    switch (self.resolution) {
-        case 1:
-            resolutionLabelFormat = @"FRAMERATE_INDICATOR_720p30";
-            break;
-        case 2:
-            resolutionLabelFormat = @"FRAMERATE_INDICATOR_HD";
-            break;
-        case 3:
-            resolutionLabelFormat = @"FRAMERATE_INDICATOR_4K";
-            break;
-        default:
-            resolutionLabelFormat = @"";
-            break;
+    NSInteger fps = (self.framerate >= 1 && self.framerate <= 5) ? toFPS[self.framerate - 1] : 0;
+    NSString *framerateLabel;
+    NSString *label;
+    if (@available(iOS 13.0, *)) {
+        NSNumberFormatter *formatter = [%c(CAMControlStatusIndicator) integerFormatter];
+        framerateLabel = [formatter stringFromNumber:@(fps)];
+        NSString *resolutionLabelFormat;
+        switch (self.resolution) {
+            case 1:
+                resolutionLabelFormat = @"FRAMERATE_INDICATOR_720p30";
+                break;
+            case 2:
+                resolutionLabelFormat = @"FRAMERATE_INDICATOR_HD";
+                break;
+            case 3:
+                resolutionLabelFormat = @"FRAMERATE_INDICATOR_4K";
+                break;
+            default:
+                resolutionLabelFormat = @"";
+                break;
+        }
+        label = [NSString stringWithFormat:@"%@ · %@", CAMLocalizedFrameworkString(resolutionLabelFormat), framerateLabel];
+    } else {
+        framerateLabel = [NSString stringWithFormat:@"%ld", (long)fps];
+        switch (self.resolution) {
+            case 1:
+                label = [NSString stringWithFormat:@"%@ · %@", CAMLocalizedFrameworkString(@"FRAMERATE_INDICATOR_720p30"), framerateLabel];
+                break;
+            case 2:
+                label = [NSString stringWithFormat:CAMLocalizedFrameworkString(@"FRAMERATE_INDICATOR_HD_WITH_FRAMERATE"), framerateLabel];
+                break;
+            case 3:
+                label = [NSString stringWithFormat:CAMLocalizedFrameworkString(@"FRAMERATE_INDICATOR_4K_WITH_FRAMERATE"), framerateLabel];
+                break;
+            default:
+                label = framerateLabel;
+                break;
+        }
     }
-
-    NSNumberFormatter *formatter = [%c(CAMControlStatusIndicator) integerFormatter];
-    NSString *resolutionLabel = CAMLocalizedFrameworkString(resolutionLabelFormat);
-    NSString *framerateLabel = [formatter stringFromNumber:@(toFPS[self.framerate - 1])];
-    NSString *label = [NSString stringWithFormat:@"%@ · %@", resolutionLabel, framerateLabel];
 
     NSDictionary *attributes = @{
         @"CTFeatureTypeIdentifier": @(35),
@@ -178,8 +197,21 @@ NSString *title(VideoConfigurationMode mode) {
 - (void)_updateFramerateIndicatorTextForGraphConfiguration:(CAMCaptureGraphConfiguration *)configuration {
     CAMFramerateIndicatorView *view = [self valueForKey:@"_framerateIndicatorView"];
     if (view) {
-        view.resolution = [self _videoConfigurationResolutionForGraphConfiguration:configuration];
-        view.framerate = [self _videoConfigurationFramerateForGraphConfiguration:configuration];
+        if (@available(iOS 13.0, *)) {
+            view.resolution = [self _videoConfigurationResolutionForGraphConfiguration:configuration];
+            view.framerate = [self _videoConfigurationFramerateForGraphConfiguration:configuration];
+        } else {
+            NSInteger videoConfiguration = configuration.videoConfiguration;
+            static const NSInteger resolutions[] = { 0, 2, 1, 1, 2, 3, 1, 2, 2, 3, 3 };
+            static const NSInteger framerates[] = { 0, 3, 4, 5, 4, 2, 2, 2, 5, 3, 1 };
+            if (videoConfiguration >= 1 && videoConfiguration <= 10) {
+                view.resolution = resolutions[videoConfiguration];
+                view.framerate = framerates[videoConfiguration];
+            } else {
+                view.resolution = 0;
+                view.framerate = 0;
+            }
+        }
     }
     %orig;
 }
@@ -209,7 +241,8 @@ NSString *title(VideoConfigurationMode mode) {
     NSString *message = @"Select video configuration:";
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"TapVideoConfig" message:message preferredStyle:UIAlertControllerStyleAlert];
     NSMutableDictionary <NSString *, NSNumber *> *modes = [NSMutableDictionary dictionary];
-    VideoConfigurationMode currentVideoConfigurationMode = [[NSClassFromString(@"CAMUserPreferences") preferences] videoConfiguration];
+    CAMUserPreferences *preferences = [NSClassFromString(@"CAMUserPreferences") preferences];
+    VideoConfigurationMode currentVideoConfigurationMode = cameraMode == 2 ? preferences.slomoConfiguration : preferences.videoConfiguration;
     CAMCaptureCapabilities *capabilities = [NSClassFromString(@"CAMCaptureCapabilities") capabilities];
     for (VideoConfigurationMode mode = 0; mode < VideoConfigurationModeCount; ++mode) {
         if (mode != currentVideoConfigurationMode) {
@@ -223,7 +256,14 @@ NSString *title(VideoConfigurationMode mode) {
             [self _writeUserPreferences];
             CFPreferencesSetAppValue(cameraMode == 2 ? CFSTR("CAMUserPreferenceSlomoConfiguration") : CFSTR("CAMUserPreferenceVideoConfiguration"), (CFNumberRef)modes[mode], CFSTR("com.apple.camera"));
             CFPreferencesAppSynchronize(CFSTR("com.apple.camera"));
-            [self readUserPreferencesAndHandleChangesWithOverrides:0];
+            if (@available(iOS 13.0, *)) {
+                [self readUserPreferencesAndHandleChangesWithOverrides:nil];
+            } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                [self _readUserPreferencesAndHandleChanges];
+#pragma clang diagnostic pop
+            }
         }];
         [alert addAction:action];
     }
